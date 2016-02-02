@@ -1,0 +1,18 @@
+# Don't include IDE specific project files
+*.iml
+.idea/
+*.ipr
+*.iws
+.metadata
+bin/
+tmp/
+.settings/
+.project
+
+# Don't include generated artifacts
+target/
+*.class
+*.jar
+*.war
+*.ear
+hs_err_pid*
