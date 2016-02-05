@@ -8,5 +8,14 @@
     <artifactId>this-to-that</artifactId>
     <version>1.0.0-SNAPSHOT</version>
 
+    <dependencies>
+        <dependency>
+            <groupId>it.sauronsoftware.jave</groupId>
+            <artifactId>jave</artifactId>
+            <version>1.0.2</version>
+            <scope>system</scope>
+            <systemPath>${project.basedir}/lib/jave-1.0.2.jar</systemPath>
+        </dependency>
+    </dependencies>
 
 </project>
