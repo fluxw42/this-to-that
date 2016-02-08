@@ -47,13 +47,6 @@
 
     <dependencies>
         <dependency>
-            <groupId>it.sauronsoftware.jave</groupId>
-            <artifactId>jave</artifactId>
-            <version>1.0.2</version>
-            <scope>system</scope>
-            <systemPath>${project.basedir}/lib/jave-1.0.2.jar</systemPath>
-        </dependency>
-        <dependency>
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>
             <version>4.12</version>
