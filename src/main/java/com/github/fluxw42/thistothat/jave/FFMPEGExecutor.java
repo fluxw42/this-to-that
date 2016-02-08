@@ -25,6 +25,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.ArrayList;
+import java.util.List;
 
 /**
  * A ffmpeg process wrapper.
@@ -41,7 +42,7 @@ class FFMPEGExecutor {
 	/**
 	 * Arguments for the executable.
 	 */
-	private ArrayList args = new ArrayList();
+	private List<String> args = new ArrayList<>();
 
 	/**
 	 * The process representing the ffmpeg execution.
@@ -121,7 +122,7 @@ class FFMPEGExecutor {
 		String[] cmd = new String[argsSize + 1];
 		cmd[0] = ffmpegExecutablePath;
 		for (int i = 0; i < argsSize; i++) {
-			cmd[i + 1] = (String) args.get(i);
+			cmd[i + 1] = args.get(i);
 		}
 		Runtime runtime = Runtime.getRuntime();
 		ffmpeg = runtime.exec(cmd);
