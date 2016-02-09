@@ -3,3 +3,11 @@ jdk:
 - oraclejdk8
 
 sudo: false
+
+after_success:
+  - mvn clean test jacoco:report coveralls:report
+
+env:
+  matrix:
+    # The secured COVERALLS_REPO_TOKEN for fluxw42/this-to-that
+    secure: fJWdiEXSFsAastQfb4Kv8vZfPr1Xh6usC2y8PZiU1SKZfmvbQybnPA43D+AcSb7wfZylvpxExsIUKN1Rd1+InUMAkONJ20jrhBxFN2ExcuAffLTiijQwPO+iJ/sOkp/qqZE5ht/3mVBfyaeQ1xuEGMNHb7F7tso1GLSz9b+CwUhz+NGwSf0bJ1XzCiNmNe4jUx1KyhUIU9zDfT4Dj8y2ELWSbJogGTJoKNpVf3qx/IRz8Re1HrrkJmn68JOTdT++ZMdtCW1BJyq3lgPcPh8N9Ow5pn1/lhpSHx0E4t0igGKRfDmRMFJkDEXboKQaye0VbWiafMLop1loj0AQEiGZRRL8WPU1nftxG/yW9HVjdPpbp416hx3um3jb5JURG+V70lwl082mNUTTlGR8yWXkMiY6o68+qYwKrTOq0s2tgl2k7VYeoy9q6U5FaRi55b0nxFelYH5c7xSlhJ0eTIvVUflRLqPohX2jkZS3uxw9tX7Xq5oGHiLVMThwESqg2rqErqHDt6Wq2bhVyUbjbYq/+yV8+eSEJj7MjeJdMIe8XR8dGeMm75TFhFVLRdA5ew5MDWcQjG7y0qeWtiHDYx4SMtzkh7KT2MQcFXXyQ+m+Z9kTOUDi5E+AIOD8SbXQh2qN6i2zPQDdWSGP/M25JCGLcpj49uuxYluiTcVGlBmd/f8=
