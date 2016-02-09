@@ -12,7 +12,7 @@ import java.util.Objects;
  *
  * @author Jeroen Meulemeester
  */
-public class Utils {
+public final class Utils {
 
     /**
      * The default buffer size, used while reading data from an input stream
