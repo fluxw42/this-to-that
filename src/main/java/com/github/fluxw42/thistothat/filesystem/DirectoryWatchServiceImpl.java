@@ -9,7 +9,6 @@ import java.nio.file.WatchEvent;
 import java.nio.file.WatchKey;
 import java.nio.file.WatchService;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -17,7 +16,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.logging.Level;
@@ -63,7 +61,7 @@ public class DirectoryWatchServiceImpl implements DirectoryWatchService {
     /**
      * Scheduler used to poll the keys for changes
      */
-    private final ExecutorService executorService = Executors.newFixedThreadPool(10);
+    private final ExecutorService executorService = Executors.newCachedThreadPool();
 
     /**
      * Create a new instance of the {@link DirectoryWatchService}.
@@ -85,55 +83,58 @@ public class DirectoryWatchServiceImpl implements DirectoryWatchService {
                 }
             }
 
-            lock.readLock().lock();
             try {
-                final WatchKey watchKey = DirectoryWatchServiceImpl.this.watchService.poll(500, TimeUnit.MILLISECONDS);
+                final WatchKey watchKey = DirectoryWatchServiceImpl.this.watchService.take();
                 if (watchKey == null) {
                     continue;
                 }
 
+                watchKey.reset();
                 if (!Path.class.isInstance(watchKey.watchable())) {
                     continue;
                 }
 
-                final Path parent = (Path) watchKey.watchable();
-                final List<DirectoryWatchListener> registeredListeners = this.listeners.get(parent.toFile());
+                try {
+                    lock.readLock().lock();
+                    final Path parent = (Path) watchKey.watchable();
+                    final List<DirectoryWatchListener> registeredListeners = this.listeners.get(parent.toFile());
 
-                final List<WatchEvent<?>> watchEvents = watchKey.pollEvents();
-                for (final WatchEvent<?> watchEvent : watchEvents) {
-                    final EventType eventType = EventType.fromKind(watchEvent.kind());
-                    if (eventType == null) {
-                        continue;
-                    }
-
-                    final Object context = watchEvent.context();
-                    if (context == null) {
-                        if (logger.isLoggable(Level.WARNING)) {
-                            logger.log(Level.WARNING, "Expected 'File' as event context but context was 'null' for event type [" + eventType + "]");
+                    final List<WatchEvent<?>> watchEvents = watchKey.pollEvents();
+                    for (final WatchEvent<?> watchEvent : watchEvents) {
+                        final EventType eventType = EventType.fromKind(watchEvent.kind());
+                        if (eventType == null) {
+                            continue;
                         }
-                        continue;
-                    }
 
-                    final Class<Path> expectedClass = Path.class;
-                    if (!expectedClass.isInstance(context)) {
-                        if (logger.isLoggable(Level.WARNING)) {
-                            logger.log(Level.WARNING, "Expected [" + expectedClass + "] as event context but was [" + context.getClass() + "] for event type [" + eventType + "]");
+                        final Object context = watchEvent.context();
+                        if (context == null) {
+                            if (logger.isLoggable(Level.WARNING)) {
+                                logger.log(Level.WARNING, "Expected 'File' as event context but context was 'null' for event type [" + eventType + "]");
+                            }
+                            continue;
                         }
-                        continue;
-                    }
 
-                    final Path file = parent.resolve((Path) context);
-                    for (final DirectoryWatchListener listener : registeredListeners) {
-                        this.executorService.submit((Runnable) () -> listener.updated(file.toFile(), eventType));
-                    }
+                        final Class<Path> expectedClass = Path.class;
+                        if (!expectedClass.isInstance(context)) {
+                            if (logger.isLoggable(Level.WARNING)) {
+                                logger.log(Level.WARNING, "Expected [" + expectedClass + "] as event context but was [" + context.getClass() + "] for event type [" + eventType + "]");
+                            }
+                            continue;
+                        }
 
+                        final Path path = parent.resolve((Path) context);
+                        final File file = path.toFile();
+                        for (final DirectoryWatchListener listener : registeredListeners) {
+                            this.executorService.submit((Runnable) () -> listener.updated(file, eventType));
+                        }
+
+                    }
+                } finally {
+                    lock.readLock().unlock();
                 }
 
-                watchKey.reset();
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
-            } finally {
-                lock.readLock().unlock();
             }
         } while (!Thread.currentThread().isInterrupted());
 
