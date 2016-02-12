@@ -146,7 +146,7 @@ public class DirectoryWatchServiceImplTest {
             out.flush();
         }
 
-        verify(listener, timeout(5000)).updated(eq(modifiedFile), eq(EventType.MODIFIED));
+        verify(listener, timeout(5000).atLeastOnce()).updated(eq(modifiedFile), eq(EventType.MODIFIED));
         verifyNoMoreInteractions(listener);
 
     }
@@ -155,7 +155,7 @@ public class DirectoryWatchServiceImplTest {
     public void testMultipleListeners() throws Exception {
         service.start();
 
-        final File directory = this.folder.newFolder("modified-event-test");
+        final File directory = this.folder.newFolder("multiple-event-test");
         final File modifiedFile = new File(directory, "test-file");
         assertTrue(modifiedFile.createNewFile());
 
@@ -163,8 +163,9 @@ public class DirectoryWatchServiceImplTest {
         for (int i = 0; i < listeners.length; i++) {
             listeners[i] = mock(DirectoryWatchListener.class);
             service.addListener(directory, listeners[i]);
-            verifyZeroInteractions(listeners[i]);
         }
+
+        verifyZeroInteractions(listeners);
 
         final Set<File> watchedDirectories = service.getWatchedDirectories();
         assertNotNull(watchedDirectories);
@@ -176,7 +177,7 @@ public class DirectoryWatchServiceImplTest {
         }
 
         for (final DirectoryWatchListener listener : listeners) {
-            verify(listener, timeout(5000)).updated(eq(modifiedFile), eq(EventType.MODIFIED));
+            verify(listener, timeout(5000).atLeastOnce()).updated(eq(modifiedFile), eq(EventType.MODIFIED));
         }
 
         verifyNoMoreInteractions(listeners);

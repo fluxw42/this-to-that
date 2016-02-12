@@ -89,7 +89,6 @@ public class DirectoryWatchServiceImpl implements DirectoryWatchService {
                     continue;
                 }
 
-                watchKey.reset();
                 if (!Path.class.isInstance(watchKey.watchable())) {
                     continue;
                 }
@@ -130,6 +129,9 @@ public class DirectoryWatchServiceImpl implements DirectoryWatchService {
 
                     }
                 } finally {
+                    if (watchKey != null) {
+                        watchKey.reset();
+                    }
                     lock.readLock().unlock();
                 }
 
