@@ -1,13 +1,25 @@
 package com.github.fluxw42.thistothat.filesystem;
 
 import java.io.File;
+import java.io.IOException;
+import java.nio.file.FileSystems;
+import java.nio.file.Path;
+import java.nio.file.StandardWatchEventKinds;
+import java.nio.file.WatchEvent;
+import java.nio.file.WatchKey;
+import java.nio.file.WatchService;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantLock;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -29,9 +41,9 @@ public class DirectoryWatchServiceImpl implements DirectoryWatchService {
     private volatile boolean started = false;
 
     /**
-     * The lock used to protected concurrent start and stop calls
+     * The lock used to protected concurrency of watch service
      */
-    private final Lock startStopLock = new ReentrantLock();
+    private final ReadWriteLock lock = new ReentrantReadWriteLock();
 
     /**
      * The map of listeners, indexed by watched directory
@@ -39,11 +51,104 @@ public class DirectoryWatchServiceImpl implements DirectoryWatchService {
     private final Map<File, List<DirectoryWatchListener>> listeners = new HashMap<>();
 
     /**
+     * The registered watch keys for each directory
+     */
+    private final Map<File, WatchKey> watchKeys = new HashMap<>();
+
+    /**
+     * The watch service, used to watch the required directories
+     */
+    private WatchService watchService = null;
+
+    /**
+     * Scheduler used to poll the keys for changes
+     */
+    private final ExecutorService executorService = Executors.newFixedThreadPool(10);
+
+    /**
+     * Create a new instance of the {@link DirectoryWatchService}.
+     */
+    public DirectoryWatchServiceImpl() {
+        this.executorService.submit(this::pollEvents);
+    }
+
+    /**
+     * Poll for file system events
+     */
+    private void pollEvents() {
+        do {
+            if (!isStarted()) {
+                try {
+                    Thread.sleep(500);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+            }
+
+            lock.readLock().lock();
+            try {
+                final WatchKey watchKey = DirectoryWatchServiceImpl.this.watchService.poll(500, TimeUnit.MILLISECONDS);
+                if (watchKey == null) {
+                    continue;
+                }
+
+                if (!Path.class.isInstance(watchKey.watchable())) {
+                    continue;
+                }
+
+                final Path parent = (Path) watchKey.watchable();
+                final List<DirectoryWatchListener> registeredListeners = this.listeners.get(parent.toFile());
+
+                final List<WatchEvent<?>> watchEvents = watchKey.pollEvents();
+                for (final WatchEvent<?> watchEvent : watchEvents) {
+                    final EventType eventType = EventType.fromKind(watchEvent.kind());
+                    if (eventType == null) {
+                        continue;
+                    }
+
+                    final Object context = watchEvent.context();
+                    if (context == null) {
+                        if (logger.isLoggable(Level.WARNING)) {
+                            logger.log(Level.WARNING, "Expected 'File' as event context but context was 'null' for event type [" + eventType + "]");
+                        }
+                        continue;
+                    }
+
+                    final Class<Path> expectedClass = Path.class;
+                    if (!expectedClass.isInstance(context)) {
+                        if (logger.isLoggable(Level.WARNING)) {
+                            logger.log(Level.WARNING, "Expected [" + expectedClass + "] as event context but was [" + context.getClass() + "] for event type [" + eventType + "]");
+                        }
+                        continue;
+                    }
+
+                    final Path file = parent.resolve((Path) context);
+                    for (final DirectoryWatchListener listener : registeredListeners) {
+                        this.executorService.submit((Runnable) () -> listener.updated(file.toFile(), eventType));
+                    }
+
+                }
+
+                watchKey.reset();
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            } finally {
+                lock.readLock().unlock();
+            }
+        } while (!Thread.currentThread().isInterrupted());
+
+        if (logger.isLoggable(Level.WARNING)) {
+            logger.log(Level.WARNING, "Event polling thread halted!");
+        }
+
+    }
+
+    /**
      * {@inheritDoc}
      */
     @Override
-    public final void start() {
-        this.startStopLock.lock();
+    public final void start() throws IOException {
+        this.lock.writeLock().lock();
         try {
             if (isStarted()) {
                 if (logger.isLoggable(Level.WARNING)) {
@@ -52,11 +157,12 @@ public class DirectoryWatchServiceImpl implements DirectoryWatchService {
                 return;
             }
 
-            // TODO: Implement me
+            this.watchService = FileSystems.getDefault().newWatchService();
+            updateListeners();
 
             this.started = true;
         } finally {
-            this.startStopLock.unlock();
+            this.lock.writeLock().unlock();
         }
     }
 
@@ -65,7 +171,7 @@ public class DirectoryWatchServiceImpl implements DirectoryWatchService {
      */
     @Override
     public final void stop() {
-        this.startStopLock.lock();
+        this.lock.writeLock().lock();
         try {
             if (!isStarted()) {
                 if (logger.isLoggable(Level.WARNING)) {
@@ -74,11 +180,21 @@ public class DirectoryWatchServiceImpl implements DirectoryWatchService {
                 return;
             }
 
-            // TODO: Implement me
+            this.watchKeys.values().forEach(WatchKey::cancel);
+            this.watchKeys.clear();
+
+            try {
+                this.watchService.close();
+            } catch (IOException e) {
+                if (logger.isLoggable(Level.WARNING)) {
+                    logger.log(Level.WARNING, "IOException while closing watch service : " + e.getMessage(), e);
+                }
+            }
 
             this.started = false;
         } finally {
-            this.startStopLock.unlock();
+            this.watchService = null;
+            this.lock.writeLock().unlock();
         }
     }
 
@@ -87,11 +203,11 @@ public class DirectoryWatchServiceImpl implements DirectoryWatchService {
      */
     @Override
     public final boolean isStarted() {
-        this.startStopLock.lock();
+        this.lock.writeLock().lock();
         try {
             return this.started;
         } finally {
-            this.startStopLock.unlock();
+            this.lock.writeLock().unlock();
         }
     }
 
@@ -99,28 +215,55 @@ public class DirectoryWatchServiceImpl implements DirectoryWatchService {
      * {@inheritDoc}
      */
     @Override
-    public final void addListener(final File directory, final DirectoryWatchListener listener) throws IllegalArgumentException {
+    public final void addListener(final File directory, final DirectoryWatchListener listener) throws IllegalArgumentException, IOException {
         verifyDirectoryArg(directory);
-        updateListeners();
+
+        this.lock.writeLock().lock();
+        try {
+            if (this.listeners.containsKey(directory)) {
+                final List<DirectoryWatchListener> directoryWatchListeners = this.listeners.get(directory);
+                if (!directoryWatchListeners.contains(listener)) {
+                    directoryWatchListeners.add(listener);
+                }
+            } else {
+                final List<DirectoryWatchListener> watchListeners = new ArrayList<>();
+                watchListeners.add(listener);
+                this.listeners.put(directory, watchListeners);
+            }
+            updateListeners();
+        } finally {
+            this.lock.writeLock().unlock();
+        }
     }
 
     /**
      * {@inheritDoc}
      */
     @Override
-    public final void removeListener(final File directory, final DirectoryWatchListener listener) throws IllegalArgumentException {
+    public final void removeListener(final File directory, final DirectoryWatchListener listener) throws IllegalArgumentException, IOException {
         verifyDirectoryArg(directory);
-        this.listeners.getOrDefault(directory, Collections.emptyList()).remove(listener);
-        updateListeners();
+
+        this.lock.writeLock().lock();
+        try {
+            this.listeners.getOrDefault(directory, Collections.emptyList()).remove(listener);
+            updateListeners();
+        } finally {
+            this.lock.writeLock().unlock();
+        }
     }
 
     /**
      * {@inheritDoc}
      */
     @Override
-    public final void removeListener(final DirectoryWatchListener listener) {
-        this.listeners.values().forEach(l -> l.remove(listener));
-        updateListeners();
+    public final void removeListener(final DirectoryWatchListener listener) throws IOException {
+        this.lock.writeLock().lock();
+        try {
+            this.listeners.values().forEach(l -> l.remove(listener));
+            updateListeners();
+        } finally {
+            this.lock.writeLock().unlock();
+        }
     }
 
     /**
@@ -128,19 +271,51 @@ public class DirectoryWatchServiceImpl implements DirectoryWatchService {
      */
     @Override
     public final Set<File> getWatchedDirectories() {
-        return Collections.unmodifiableSet(this.listeners.keySet());
+        lock.readLock().lock();
+        try {
+            return Collections.unmodifiableSet(this.listeners.keySet());
+        } finally {
+            lock.readLock().unlock();
+        }
     }
 
     /**
      * Go through the map of {@link #listeners} and remove the entries which have 0 listeners left.
      */
-    private final void updateListeners() {
-        final Set<File> watchedDirectories = this.listeners.keySet();
-        for (final File watchedDirectory : watchedDirectories) {
-            final List<DirectoryWatchListener> dirListeners = this.listeners.get(watchedDirectory);
-            if (dirListeners != null && dirListeners.isEmpty()) {
-                this.listeners.remove(watchedDirectory);
+    private void updateListeners() throws IOException {
+        this.lock.writeLock().lock();
+        try {
+            final Set<File> watchedDirectories = this.listeners.keySet();
+            for (final File watchedDirectory : watchedDirectories) {
+                final List<DirectoryWatchListener> dirListeners = this.listeners.get(watchedDirectory);
+                if (dirListeners != null && dirListeners.isEmpty()) {
+                    this.listeners.remove(watchedDirectory);
+                }
             }
+
+            for (final File directory : this.listeners.keySet()) {
+                if (!this.watchKeys.containsKey(directory)) {
+                    final WatchKey watchKey = directory.toPath().register(
+                            this.watchService,
+                            StandardWatchEventKinds.ENTRY_CREATE,
+                            StandardWatchEventKinds.ENTRY_DELETE,
+                            StandardWatchEventKinds.ENTRY_MODIFY
+                    );
+                    this.watchKeys.put(directory, watchKey);
+                }
+            }
+
+            for (final File directory : watchKeys.keySet()) {
+                if (!this.listeners.containsKey(directory)) {
+                    final WatchKey watchKey = this.watchKeys.remove(directory);
+                    if (watchKey != null) {
+                        watchKey.cancel();
+                    }
+                }
+            }
+
+        } finally {
+            this.lock.writeLock().unlock();
         }
     }
 

@@ -1,7 +1,7 @@
 package com.github.fluxw42.thistothat.filesystem;
 
 import java.io.File;
-import java.util.List;
+import java.io.IOException;
 import java.util.Set;
 
 /**
@@ -14,10 +14,11 @@ public interface DirectoryWatchService {
     /**
      * Start the service. Calling start when already start has no influence on the service.
      *
+     * @throws IOException When the watch service could not be started due to a file system error
      * @see #isStarted()
      * @see #stop()
      */
-    void start();
+    void start() throws IOException;
 
     /**
      * Stop the service. Calling stop when already stopped has no influence on the service.
@@ -45,10 +46,12 @@ public interface DirectoryWatchService {
      * @param listener  The listener callback
      * @throws IllegalArgumentException When one of the parameters is 'null' or when the given
      *                                  directory is invalid
+     * @throws IOException              When the given directory can't be watched due to an
+     *                                  IOException
      * @see #removeListener(File, DirectoryWatchListener)
      * @see #removeListener(DirectoryWatchListener)
      */
-    void addListener(final File directory, final DirectoryWatchListener listener) throws IllegalArgumentException;
+    void addListener(final File directory, final DirectoryWatchListener listener) throws IllegalArgumentException, IOException;
 
     /**
      * Remove the given listener as watch from a specific directory. If a listener is registered
@@ -58,19 +61,22 @@ public interface DirectoryWatchService {
      * @param listener  The listener callback
      * @throws IllegalArgumentException When one of the parameters is 'null' or when the given
      *                                  directory is invalid
+     * @throws IOException              When the given directory watch can't be removed due to an
+     *                                  IOException
      * @see #removeListener(DirectoryWatchListener)
      * @see #addListener(File, DirectoryWatchListener)
      */
-    void removeListener(final File directory, DirectoryWatchListener listener) throws IllegalArgumentException;
+    void removeListener(final File directory, DirectoryWatchListener listener) throws IllegalArgumentException, IOException;
 
     /**
      * Remove the given listener as watch from all directories
      *
      * @param listener The listener callback
+     * @throws IOException When the given directory watch can't be removed due to an IOException
      * @see #removeListener(File, DirectoryWatchListener)
      * @see #addListener(File, DirectoryWatchListener)
      */
-    void removeListener(final DirectoryWatchListener listener);
+    void removeListener(final DirectoryWatchListener listener) throws IOException;
 
     /**
      * Get the current set of watched directories
