@@ -1,8 +1,6 @@
 package com.github.fluxw42.thistothat;
 
-import com.github.fluxw42.thistothat.converter.audio.AudioConverter;
-import com.github.fluxw42.thistothat.converter.audio.AudioFormat;
-import com.github.fluxw42.thistothat.converter.Converter;
+import com.github.fluxw42.thistothat.conf.ConfigurationImpl;
 
 import java.io.File;
 
@@ -13,13 +11,13 @@ import java.io.File;
  */
 public class Main {
 
-    public static void main(String[] args) throws Exception {
-        final Converter converter = new AudioConverter(
-                new File(args[0]),
-                new File(args[1]),
-                AudioFormat.MP3
-        );
-        converter.convert(System.out::println);
+    public static void main(final String[] args) throws Exception {
+        final File configFile = args == null || args.length == 0 || args[0] == null || args[0].trim().isEmpty() ?
+                new File("this-to-that.properties") : new File(args[0].trim());
+
+        final ConfigurationImpl config = new ConfigurationImpl(configFile);
+        final ThisToThat thisToThat = new ThisToThat(config);
+        thisToThat.start();
     }
 
 }
