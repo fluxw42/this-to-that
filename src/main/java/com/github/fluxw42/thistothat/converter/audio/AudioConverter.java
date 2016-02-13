@@ -11,6 +11,8 @@ import com.github.fluxw42.thistothat.jave.EncodingAttributes;
 import com.github.fluxw42.thistothat.jave.MultimediaInfo;
 
 import java.io.File;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * Date: 2/5/16 - 3:51 PM
@@ -18,6 +20,11 @@ import java.io.File;
  * @author Jeroen Meulemeester
  */
 public class AudioConverter extends Converter {
+
+    /**
+     * The logger for class AudioConverter
+     */
+    private static final Logger logger = Logger.getLogger(AudioConverter.class.getName());
 
     /**
      * The expected audio format
@@ -65,19 +72,34 @@ public class AudioConverter extends Converter {
      */
     private EncoderProgressListener mapListener(final ConversionProgressListener listener) {
         return new EncoderProgressListener() {
-            public void sourceInfo(MultimediaInfo multimediaInfo) {
 
+            /**
+             * {@inheritDoc}
+             */
+            public final void sourceInfo(MultimediaInfo multimediaInfo) {
+                if (logger.isLoggable(Level.INFO)) {
+                    logger.log(Level.INFO, String.valueOf(multimediaInfo));
+                }
             }
 
-            public void progress(int i) {
+            /**
+             * {@inheritDoc}
+             */
+            public final void progress(int i) {
                 if (listener != null) {
                     listener.state(i);
                 }
             }
 
-            public void message(String s) {
-
+            /**
+             * {@inheritDoc}
+             */
+            public final void message(String message) {
+                if (logger.isLoggable(Level.FINE)) {
+                    logger.log(Level.FINE, message);
+                }
             }
+
         };
     }
 
