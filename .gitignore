@@ -11,5 +11,7 @@ tmp/
 
 # Don't include generated artifacts
 target/
-*.class
 hs_err_pid*
+
+*.wma
+*.mp3
