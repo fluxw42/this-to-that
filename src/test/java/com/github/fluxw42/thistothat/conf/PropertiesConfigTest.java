@@ -28,9 +28,33 @@ public class PropertiesConfigTest {
         assertEquals(4, config.getIntOption("wrongvalue", 4));
     }
 
-    @Test(expected = NullPointerException.class)
-    public void testGetIntOptionNullProperties() throws Exception {
-        new PropertiesConfig((Properties) null) {};
+    @Test
+    public void testGetLongOption() throws Exception {
+        final Properties properties = new Properties();
+        properties.setProperty("testkey", "1");
+        properties.setProperty("wrongvalue", "-");
+
+        final PropertiesConfig config = new PropertiesConfig(properties) {
+
+        };
+
+        assertEquals(1, config.getLongOption("testkey", 2));
+        assertEquals(3, config.getLongOption("nonexistent", 3));
+        assertEquals(4, config.getLongOption("wrongvalue", 4));
     }
 
+    @Test(expected = NullPointerException.class)
+    public void testGetIntOptionNullProperties() throws Exception {
+        new PropertiesConfig((Properties) null) {
+        };
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void testNullKey() throws Exception {
+        final Properties properties = new Properties();
+        final PropertiesConfig propertiesConfig = new PropertiesConfig(properties) {
+
+        };
+        propertiesConfig.getIntOption(null, 1);
+    }
 }

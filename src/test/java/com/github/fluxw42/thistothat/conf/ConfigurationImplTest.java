@@ -19,6 +19,7 @@ public class ConfigurationImplTest {
         final ConfigurationImpl config = new ConfigurationImpl(new Properties());
         assertEquals(new File("in"), config.getInputDirectory());
         assertEquals(new File("out"), config.getOutputDirectory());
+        assertEquals(5000, config.getFileSystemQuietTime());
     }
 
     @Test
@@ -26,6 +27,7 @@ public class ConfigurationImplTest {
         final ConfigurationImpl config = new ConfigurationImpl(new File("non-existing-file"));
         assertEquals(new File("in"), config.getInputDirectory());
         assertEquals(new File("out"), config.getOutputDirectory());
+        assertEquals(5000, config.getFileSystemQuietTime());
     }
 
 }

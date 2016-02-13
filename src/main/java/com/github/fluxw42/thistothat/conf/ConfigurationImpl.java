@@ -2,6 +2,7 @@ package com.github.fluxw42.thistothat.conf;
 
 import java.io.File;
 import java.util.Properties;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Date: 2/8/16 - 7:59 PM
@@ -42,6 +43,14 @@ public class ConfigurationImpl extends PropertiesConfig implements Configuration
     @Override
     public File getOutputDirectory() {
         return new File(getStringOption("out.directory", "out"));
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public long getFileSystemQuietTime() {
+        return getLongOption("fs.quiet.time", TimeUnit.SECONDS.toMillis(5));
     }
 
 }

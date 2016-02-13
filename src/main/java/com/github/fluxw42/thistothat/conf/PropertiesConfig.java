@@ -97,6 +97,30 @@ public abstract class PropertiesConfig {
     }
 
     /**
+     * Get a configuration value as a long by name, or the default when the given key does not exist
+     * or contains an invalid value
+     *
+     * @param key          The keyName, cannot be 'null' or empty. Any leading and trailing
+     *                     whitespace is removed from the keyname before being used
+     * @param defaultValue The default long value in case the key doesn't exist, or when the value
+     *                     could not be parsed as a long
+     * @return The long config value or the default when not found
+     * @throws IllegalArgumentException When the key is 'null' or empty
+     */
+    protected final long getLongOption(final String key, final long defaultValue) throws IllegalArgumentException {
+        final String value = this.properties.getProperty(validateKey(key), String.valueOf(defaultValue));
+        try {
+            return Long.valueOf(value);
+        } catch (final NumberFormatException e) {
+            if (logger.isLoggable(Level.WARNING)) {
+                logger.log(Level.WARNING, "Unable to parse config with key [" + key + "] and value [" + value + "] " +
+                        "as long. Using default [" + defaultValue + "]", e);
+            }
+            return defaultValue;
+        }
+    }
+
+    /**
      * Get a configuration value as a {@link String} by name, or the default when the given key does
      * not exist.
      *
