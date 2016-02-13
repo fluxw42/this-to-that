@@ -1,5 +1,7 @@
 package com.github.fluxw42.thistothat.conf;
 
+import java.io.File;
+
 /**
  * Date: 2/8/16 - 7:36 PM
  *
@@ -7,6 +9,8 @@ package com.github.fluxw42.thistothat.conf;
  */
 public interface Configuration {
 
+    File getInputDirectory();
 
+    File getOutputDirectory();
 
 }

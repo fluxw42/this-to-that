@@ -49,7 +49,7 @@ public abstract class PropertiesConfig {
      *
      * @param properties The properties used for this config. Cannot be 'null'
      */
-    public PropertiesConfig(final Properties properties) {
+    protected PropertiesConfig(final Properties properties) {
         this.properties = Objects.requireNonNull(properties);
     }
 
@@ -84,7 +84,7 @@ public abstract class PropertiesConfig {
      * @throws IllegalArgumentException When the key is 'null' or empty
      */
     protected final int getIntOption(final String key, final int defaultValue) throws IllegalArgumentException {
-        final String value = this.properties.getProperty(key, String.valueOf(defaultValue));
+        final String value = this.properties.getProperty(validateKey(key), String.valueOf(defaultValue));
         try {
             return Integer.valueOf(value);
         } catch (final NumberFormatException e) {
@@ -94,6 +94,35 @@ public abstract class PropertiesConfig {
             }
             return defaultValue;
         }
+    }
+
+    /**
+     * Get a configuration value as a {@link String} by name, or the default when the given key does
+     * not exist.
+     *
+     * @param key          The keyName, cannot be 'null' or empty. Any leading and trailing
+     *                     whitespace is removed from the keyname before being used
+     * @param defaultValue The default integer value in case the key doesn't exist, or when the
+     *                     value could not be parsed as an integer
+     * @return The integer config value or the default when not found
+     * @throws IllegalArgumentException When the key is 'null' or empty
+     */
+    protected final String getStringOption(final String key, final String defaultValue) {
+        return this.properties.getProperty(validateKey(key), defaultValue);
+    }
+
+    /**
+     * Return the given key when the key is not 'null' or empty. Throw
+     *
+     * @param key The key that has to be validated
+     * @return The key when it's valid
+     * @throws IllegalArgumentException When the key is invalid (null, empty or whitespace only)
+     */
+    private static String validateKey(final String key) throws IllegalArgumentException {
+        if (key == null || key.trim().isEmpty()) {
+            throw new IllegalArgumentException("Invalid key [" + key + "]");
+        }
+        return key;
     }
 
 }
