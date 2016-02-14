@@ -60,15 +60,35 @@ public class ThisToThat {
     /**
      * Start the service
      */
-    public final void start() {
-        final DirectoryWatchService directoryWatchService = new DirectoryWatchServiceImpl();
-        try {
-            directoryWatchService.start();
-            directoryWatchService.addListener(config.getInputDirectory(), this::eventHandler);
-            this.executor.submit(this::taskHandler);
-        } catch (IOException e) {
-            throw new IllegalStateException(e);
+    public final void start() throws IOException {
+        final File inputDirectory = this.config.getInputDirectory();
+        if (!inputDirectory.exists()) {
+            if (logger.isLoggable(Level.WARNING)) {
+                logger.log(Level.WARNING, "Input directory [" + inputDirectory + "] doesn't exist. Creating path.");
+            }
+
+            final boolean success = inputDirectory.mkdirs();
+            if (!success) {
+                throw new IOException("Failed to create input directory [" + inputDirectory + "]!");
+            }
         }
+
+        final File outputDirectory = this.config.getOutputDirectory();
+        if (!outputDirectory.exists()) {
+            if (logger.isLoggable(Level.WARNING)) {
+                logger.log(Level.WARNING, "Output directory [" + outputDirectory + "] doesn't exist. Creating path.");
+            }
+
+            final boolean success = outputDirectory.mkdirs();
+            if (!success) {
+                throw new IOException("Failed to create output directory [" + outputDirectory + "]!");
+            }
+        }
+
+        final DirectoryWatchService directoryWatchService = new DirectoryWatchServiceImpl();
+        directoryWatchService.start();
+        directoryWatchService.addListener(inputDirectory, this::eventHandler);
+        this.executor.submit(this::taskHandler);
     }
 
     /**
