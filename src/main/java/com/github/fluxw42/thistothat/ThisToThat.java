@@ -89,6 +89,11 @@ public class ThisToThat {
         directoryWatchService.start();
         directoryWatchService.addListener(inputDirectory, this::eventHandler);
         this.executor.submit(this::taskHandler);
+
+        if (logger.isLoggable(Level.INFO)) {
+            logger.log(Level.INFO, "Started This-to-That.");
+        }
+
     }
 
     /**
