@@ -75,22 +75,30 @@ public class ThisToThat {
      * Method used to handle file system events and to put new {@link ConversionTask}s on the queue
      */
     private void eventHandler(final File file, final EventType eventType) {
-        System.out.println(file + " " + eventType);
-        if (file != null && (eventType == EventType.CREATED || eventType == EventType.MODIFIED)) {
-            final ConversionTask task = new ConversionTask(file, this.config.getFileSystemQuietTime(), TimeUnit.MILLISECONDS);
+        if (file == null) {
+            return;
+        }
 
-            final boolean updated = this.queue.remove(task);
-            final boolean success = this.queue.offer(task);
-            if (!success) {
-                if (logger.isLoggable(Level.WARNING)) {
-                    logger.log(Level.WARNING, "Failed to add task [" + task + "] to queue!");
-                }
-            } else if (!updated) {
-                if (logger.isLoggable(Level.WARNING)) {
-                    logger.log(Level.WARNING, "Successfully added task [" + task + "] to queue!");
-                }
+        if (eventType != EventType.CREATED && eventType != EventType.MODIFIED) {
+            return;
+        }
+
+        if (!this.config.isWatched(file)) {
+            return;
+        }
+
+
+        final ConversionTask task = new ConversionTask(file, this.config.getFileSystemQuietTime(), TimeUnit.MILLISECONDS);
+        final boolean updated = this.queue.remove(task);
+        final boolean success = this.queue.offer(task);
+        if (!success) {
+            if (logger.isLoggable(Level.WARNING)) {
+                logger.log(Level.WARNING, "Failed to add task [" + task + "] to queue!");
             }
-
+        } else if (!updated) {
+            if (logger.isLoggable(Level.WARNING)) {
+                logger.log(Level.WARNING, "Successfully added task [" + task + "] to queue!");
+            }
         }
     }
 
